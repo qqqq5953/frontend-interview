@@ -18,13 +18,12 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{(e: 'complete', value: string): void }>()
 
 // otp input
-
 const otpLength = computed(() => clampLength(props.length))
 const numbers = ref<string[]>(Array(otpLength.value).fill(''))
 const isComplete = computed(() => numbers.value.every(v => v !== ''))
 
-watch(isComplete, (done) => {
-  if (done) {
+watchEffect(() => {
+  if (isComplete.value) {
     emit('complete', numbers.value.join(''))
   }
 })
@@ -42,7 +41,7 @@ function onInput (e: Event, index: number) {
   const validValue = removeNonDigits(target.value)
   const newValue = validValue.slice(-1)
   target.value = newValue
-  numbers.value[index] = newValue
+  numbers.value = [...numbers.value.slice(0, index), newValue, ...numbers.value.slice(index + 1)]
 
   if (newValue && index < numbers.value.length - 1) {
     activeIndex.value = index + 1
