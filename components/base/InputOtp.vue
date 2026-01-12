@@ -18,7 +18,8 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{(e: 'complete', value: string): void }>()
 
 // otp input
-const otpLength = computed(() => Math.min(8, Math.max(4, Math.floor(Number(props.length)))))
+
+const otpLength = computed(() => clampLength(props.length))
 const numbers = ref<string[]>(Array(otpLength.value).fill(''))
 const isComplete = computed(() => numbers.value.every(v => v !== ''))
 
@@ -28,9 +29,17 @@ watch(isComplete, (done) => {
   }
 })
 
+function clampLength (length: number) {
+  return Math.min(8, Math.max(4, Math.floor(length)))
+}
+
+function removeNonDigits (value: string) {
+  return value.replace(/\D/g, '')
+}
+
 function onInput (e: Event, index: number) {
   const target = e.target as HTMLInputElement
-  const validValue = target.value.replace(/\D/g, '')
+  const validValue = removeNonDigits(target.value)
   const newValue = validValue.slice(-1)
   target.value = newValue
   numbers.value[index] = newValue
@@ -53,7 +62,7 @@ function onKeydown (e: KeyboardEvent, index: number) {
 function onPaste (e: ClipboardEvent) {
   e.preventDefault()
   const text = e.clipboardData?.getData('text') ?? ''
-  const nums = text.replace(/\D/g, '').slice(0, otpLength.value)
+  const nums = removeNonDigits(text).slice(0, otpLength.value)
 
   nums.split('').forEach((num, index) => {
     numbers.value[index] = num
