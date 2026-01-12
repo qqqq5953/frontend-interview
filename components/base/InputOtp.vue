@@ -44,7 +44,7 @@ function onInput (e: Event, index: number) {
   numbers.value = [...numbers.value.slice(0, index), newValue, ...numbers.value.slice(index + 1)]
 
   if (newValue && index < numbers.value.length - 1) {
-    activeIndex.value = index + 1
+    onFocus(index + 1)
   }
 }
 
@@ -53,7 +53,7 @@ function onKeydown (e: KeyboardEvent, index: number) {
     const target = e.target as HTMLInputElement
     if (!target.value && index > 0) {
       e.preventDefault()
-      activeIndex.value = index - 1
+      onFocus(index - 1)
     }
   }
 }
@@ -67,18 +67,12 @@ function onPaste (e: ClipboardEvent) {
     numbers.value[index] = num
   })
 
-  activeIndex.value = nums.length - 1
+  onFocus(nums.length - 1)
 }
 
 // focus
 const inputs = ref<HTMLInputElement[]>([])
 const activeIndex = ref(0)
-
-function setInputRef (el: HTMLInputElement | null, i: number) {
-  if (el) {
-    inputs.value[i] = el
-  }
-}
 
 function onFocus (index: number) {
   activeIndex.value = index
@@ -96,7 +90,7 @@ watch(activeIndex, (i) => {
       <input
         v-for="(_, i) in otpLength"
         :key="i"
-        :ref="el => setInputRef(el as HTMLInputElement, i)"
+        ref="inputs"
         type="text"
         inputmode="numeric"
         maxlength="1"
