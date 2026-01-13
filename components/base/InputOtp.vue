@@ -1,31 +1,87 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 
-  type Props = {
-      length?: number
-      isDisabled?: boolean
-      error?: boolean
-      errorMessage?: string
+const props = defineProps({
+  length: {
+    type: Number,
+    default: 6
+  },
+  columns: {
+    type: Number,
+    default: 6,
+    validator: (value: number) => {
+      // 注意：validator 中无法直接访问其他 props，所以需要从外部计算
+      // 这里先做基本验证，详细的验证在 computed 中处理
+      if (value < 1) {
+        return false
+      }
+      return true
+    }
+  },
+  isDisabled: {
+    type: Boolean,
+    default: false
+  },
+  error: {
+    type: Boolean,
+    default: false
+  },
+  errorMessage: {
+    type: String,
+    default: ''
+  },
+  modelValue: {
+    type: String,
+    default: ''
   }
-
-const props = withDefaults(defineProps<Props>(), {
-  length: 6,
-  isDisabled: false,
-  error: false,
-  errorMessage: ''
 })
 
-const emit = defineEmits<{(e: 'complete', value: string): void }>()
+const emit = defineEmits<{(e: 'update:modelValue', value: string): void}>()
 
 // otp input
 const otpLength = computed(() => clampLength(props.length))
 const numbers = ref<string[]>(Array(otpLength.value).fill(''))
-const isComplete = computed(() => numbers.value.every(v => v !== ''))
+
+// 计算列数，确保不超过 otpLength
+const columns = computed(() => {
+  const maxColumns = otpLength.value
+  const requestedColumns = Math.max(1, Math.floor(props.columns || maxColumns))
+
+  if (process.dev && requestedColumns > maxColumns) {
+    console.warn(
+      `[InputOtp] columns (${props.columns}) 不能大于 length (${maxColumns})。columns 将被限制为 ${maxColumns}。`
+    )
+  }
+
+  return Math.min(requestedColumns, maxColumns)
+})
+
+// 计算 grid 样式
+const gridStyle = computed(() => {
+  return {
+    gridTemplateColumns: `repeat(${columns.value}, 1fr)`
+  }
+})
+
+// 同步外部传入的 modelValue 到内部 numbers
+watch(() => props.modelValue, (newValue) => {
+  if (newValue) {
+    const nums = newValue.replace(/\D/g, '').slice(0, otpLength.value)
+    nums.split('').forEach((num, index) => {
+      numbers.value[index] = num
+    })
+    // 填充剩余位置为空字符串
+    for (let i = nums.length; i < otpLength.value; i++) {
+      numbers.value[i] = ''
+    }
+  } else {
+    numbers.value = Array(otpLength.value).fill('')
+  }
+}, { immediate: true })
 
 watchEffect(() => {
-  if (isComplete.value) {
-    emit('complete', numbers.value.join(''))
-  }
+  const value = numbers.value.join('')
+  emit('update:modelValue', value)
 })
 
 function clampLength (length: number) {
@@ -86,7 +142,10 @@ watch(activeIndex, (i) => {
 
 <template>
   <div class="flex flex-col items-center gap-2 py-2">
-    <div class="flex gap-2">
+    <div
+      class="grid gap-2"
+      :style="gridStyle"
+    >
       <input
         v-for="(_, i) in otpLength"
         :key="i"
